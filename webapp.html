@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blackjack</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #2c3e50;
+      color: #ecf0f1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px;
+      position: relative;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .hand-container {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .hand {
+      margin: 0 10px;
+    }
+
+    .hand-value {
+      background-color: #34495e;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-left: 10px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .cards {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      width: 60px;
+      height: 90px;
+      background-color: white;
+      border-radius: 5px;
+      border: 1px solid #999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 1rem;
+      color: black;
+    }
+
+    .card.red {
+      color: red;
+    }
+
+    .buttons {
+      margin: 20px;
+    }
+
+    button {
+      margin: 0 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+    }
+
+    button.hit {
+      background-color: #e74c3c;
+    }
+
+    button.hit:hover {
+      background-color: #c0392b;
+    }
+
+    button.stand {
+      background-color: #2c2c2c;
+    }
+
+    button.stand:hover {
+      background-color: #1a1a1a;
+    }
+
+    button.reset {
+      background-color: #3498db;
+    }
+
+    button.reset:hover {
+      background-color: #2980b9;
+    }
+
+    .status {
+      margin-top: 20px;
+      font-size: 1.2rem;
+    }
+
+    .deck-count {
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    .hidden {
+      background-color: #7f8c8d;
+      color: #7f8c8d;
+    }
+
+    .deck-visual-container {
+      position: absolute;
+      right: 40px;
+      top: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+    }
+
+    .deck-stack {
+      display: flex;
+      flex-direction: column-reverse;
+      margin-top: 10px;
+    }
+
+    .card-back {
+      width: 60px;
+      height: 90px;
+      border: 2px solid #ecf0f1;
+      border-radius: 5px;
+      margin-top: -60px;
+      z-index: 1;
+      background-image: 
+        linear-gradient(45deg, #3498db 25%, transparent 25%), 
+        linear-gradient(-45deg, #3498db 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #3498db 75%), 
+        linear-gradient(-45deg, transparent 75%, #3498db 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      background-color: white;
+    }
+
+    .deck-info-box {
+      position: absolute;
+      right: 140px;
+      top: 120px;
+      background-color: white;
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+      font-weight: bold;
+      font-size: 1rem;
+      text-align: center;
+      max-width: 160px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    .deck-info-box span:nth-child(odd) {
+      color: black;
+    }
+
+    .deck-info-box span:nth-child(even) {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Blackjack</h1>
+
+  <div class="hand-container">
+    <div class="hand">
+      <strong>Dealer's Hand:</strong>
+      <div class="cards" id="dealer-cards"></div>
+    </div>
+    <div class="hand-value" id="dealer-total">Total: ??</div>
+  </div>
+
+  <div class="hand-container">
+    <div class="hand">
+      <strong>Your Hand:</strong>
+      <div class="cards" id="player-cards"></div>
+    </div>
+    <div class="hand-value" id="player-total">Total: 0</div>
+  </div>
+
+  <div class="buttons">
+    <button class="hit" onclick="hit()">Hit</button>
+    <button class="stand" onclick="stand()">Stand</button>
+    <button class="reset" onclick="resetGame()">Restart</button>
+  </div>
+
+  <div class="status" id="status">Game in progress...</div>
+  <div class="deck-count" id="deck-count"></div>
+
+  <div class="deck-info-box">
+    <div id="deck-label"></div>
+  </div>
+
+  <div class="deck-visual-container">
+    <strong>Deck:</strong>
+    <div id="deck-stack" class="deck-stack"></div>
+  </div>
+
+  <script>
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+    let deck = [];
+    let playerHand = [];
+    let dealerHand = [];
+    let gameOver = false;
+    let dealerRevealed = false;
+
+    function createDeck() {
+      let newDeck = [];
+      for (let suit of suits) {
+        for (let value of values) {
+          newDeck.push({ value, suit });
+        }
+      }
+      for (let i = newDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+      }
+      return newDeck;
+    }
+
+    function cardValue(card) {
+      if (['J', 'Q', 'K'].includes(card.value)) return 10;
+      if (card.value === 'A') return 11;
+      return parseInt(card.value);
+    }
+
+    function handValue(hand) {
+      let total = 0;
+      let aces = 0;
+      for (let card of hand) {
+        total += cardValue(card);
+        if (card.value === 'A') aces++;
+      }
+      while (total > 21 && aces > 0) {
+        total -= 10;
+        aces--;
+      }
+      return total;
+    }
+
+    function dealInitialCards() {
+      playerHand = [deck.pop(), deck.pop()];
+      dealerHand = [deck.pop(), deck.pop()];
+    }
+
+    function displayDeckStack() {
+      const stackDiv = document.getElementById('deck-stack');
+      stackDiv.innerHTML = '';
+      const visibleCount = Math.min(deck.length, 10);
+      for (let i = 0; i < visibleCount; i++) {
+        const cardBack = document.createElement('div');
+        cardBack.classList.add('card-back');
+        cardBack.style.zIndex = i;
+        stackDiv.appendChild(cardBack);
+      }
+    }
+
+    function displayHands() {
+      const dealerDiv = document.getElementById('dealer-cards');
+      const playerDiv = document.getElementById('player-cards');
+      dealerDiv.innerHTML = '';
+      playerDiv.innerHTML = '';
+
+      dealerHand.forEach((card, i) => {
+        const cardDiv = document.createElement('div');
+        cardDiv.classList.add('card');
+        if (!dealerRevealed && i === 0) {
+          cardDiv.classList.add('hidden');
+          cardDiv.textContent = '??';
+        } else {
+          cardDiv.textContent = `${card.value}${card.suit}`;
+          if (card.suit === '♥' || card.suit === '♦') {
+            cardDiv.classList.add('red');
+          }
+        }
+        dealerDiv.appendChild(cardDiv);
+      });
+
+      playerHand.forEach(card => {
+        const cardDiv = document.createElement('div');
+        cardDiv.classList.add('card');
+        cardDiv.textContent = `${card.value}${card.suit}`;
+        if (card.suit === '♥' || card.suit === '♦') {
+          cardDiv.classList.add('red');
+        }
+        playerDiv.appendChild(cardDiv);
+      });
+
+      document.getElementById('deck-count').textContent = `Cards left in deck: ${deck.length}`;
+      const playerTotal = handValue(playerHand);
+      const dealerTotal = handValue(dealerHand);
+      document.getElementById('player-total').textContent = `Total: ${playerTotal}`;
+      document.getElementById('dealer-total').textContent =
+        dealerRevealed ? `Total: ${dealerTotal}` : `Total: ??`;
+
+      displayDeckStack();
+    }
+
+    function hit() {
+      if (gameOver) return;
+      playerHand.push(deck.pop());
+      displayHands();
+      checkGameState();
+    }
+
+    function stand() {
+      if (gameOver) return;
+      dealerRevealed = true;
+      dealerTurn();
+    }
+
+    function dealerTurn() {
+      displayHands();
+      let dealerTotal = handValue(dealerHand);
+      while (dealerTotal < 17) {
+        dealerHand.push(deck.pop());
+        dealerTotal = handValue(dealerHand);
+      }
+      checkGameState();
+    }
+
+    function checkGameState() {
+      const playerTotal = handValue(playerHand);
+      const dealerTotal = handValue(dealerHand);
+      let status = '';
+
+      if (playerTotal > 21) {
+        status = 'You busted! Dealer wins.';
+        gameOver = true;
+      } else if (dealerRevealed && dealerTotal > 21) {
+        status = 'Dealer busted! You win!';
+        gameOver = true;
+      } else if (dealerRevealed) {
+        if (playerTotal > dealerTotal) {
+          status = 'You win!';
+        } else if (playerTotal < dealerTotal) {
+          status = 'Dealer wins!';
+        } else {
+          status = "It's a tie!";
+        }
+        gameOver = true;
+      }
+
+      displayHands();
+      document.getElementById('status').textContent = status || 'Game in progress...';
+    }
+
+    function resetGame() {
+      deck = createDeck();
+      playerHand = [];
+      dealerHand = [];
+      gameOver = false;
+      dealerRevealed = false;
+      dealInitialCards();
+      displayHands();
+      setDeckLabel();
+      document.getElementById('status').textContent = 'Game in progress...';
+    }
+
+    function setDeckLabel() {
+      const text = "Cards Left In Deck";
+      const labelContainer = document.getElementById("deck-label");
+      labelContainer.innerHTML = '';
+      for (let i = 0; i < text.length; i++) {
+        const span = document.createElement("span");
+        span.textContent = text[i];
+        labelContainer.appendChild(span);
+      }
+    }
+
+    resetGame();
+  </script>
+
+</body>
+</html>
+
+
